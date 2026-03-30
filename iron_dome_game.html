@@ -237,8 +237,21 @@ function initAudio() {
         masterGain.gain.value = 0.5;
         masterGain.connect(audioCtx.destination);
     }
-    // iOS Safari suspends AudioContext until explicitly resumed inside a user gesture
-    if (audioCtx.state === 'suspended') audioCtx.resume();
+    // iOS Safari: resume suspended context + play a silent 1-frame buffer to unlock audio
+    const resume = () => {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        // Silent buffer unlock (required on iOS to enable scheduled audio)
+        const buf = audioCtx.createBuffer(1, 1, audioCtx.sampleRate);
+        const src = audioCtx.createBufferSource();
+        src.buffer = buf;
+        src.connect(audioCtx.destination);
+        src.start(0);
+    };
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume().then(resume);
+    } else {
+        resume();
+    }
 }
 
 function toggleMute() {
@@ -1249,13 +1262,26 @@ canvas.addEventListener('touchmove', e => {
 
 // ── Scale game to fit landscape screen ────────────────────────────────
 function scaleGame() {
-    const wrapper = document.getElementById('gameWrapper');
-    // Game natural size: 800 wide + ~660 total height (title+ui+canvas+instructions)
-    const gameW = 820, gameH = 660;
-    const scaleX = window.innerWidth  / gameW;
-    const scaleY = window.innerHeight / gameH;
-    const scale  = Math.min(scaleX, scaleY, 1); // never upscale on desktop
-    wrapper.style.transform = scale < 1 ? `scale(${scale})` : '';
+    const wrapper  = document.getElementById('gameWrapper');
+    const title    = document.getElementById('title');
+    const instr    = document.getElementById('instructions');
+    const isMobileLandscape = window.innerWidth > window.innerHeight && window.innerHeight < 600;
+
+    if (isMobileLandscape) {
+        // Hide non-essential elements to maximise canvas space
+        title.style.display = 'none';
+        instr.style.display = 'none';
+        // Scale to fill width; canvas(560) + ui(50) + padding ≈ 625
+        const scale = Math.min(window.innerWidth / 820, window.innerHeight / 625);
+        wrapper.style.transformOrigin = 'top center';
+        wrapper.style.transform = `scale(${scale})`;
+    } else {
+        title.style.display = '';
+        instr.style.display = '';
+        const scale = Math.min(window.innerWidth / 820, window.innerHeight / 680, 1);
+        wrapper.style.transformOrigin = 'top center';
+        wrapper.style.transform = scale < 1 ? `scale(${scale})` : '';
+    }
 }
 scaleGame();
 window.addEventListener('resize', scaleGame);
