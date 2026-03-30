@@ -90,9 +90,23 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const W = canvas.width, H = canvas.height;
 
+// ── Cities ─────────────────────────────────────────────────────────────
+const CITIES = [
+    { name: 'תל אביב',  spawnRate: 115, minRate: 62, speed: 1.2 },
+    { name: 'חיפה',     spawnRate: 100, minRate: 54, speed: 1.6 },
+    { name: 'באר שבע',  spawnRate: 78,  minRate: 42, speed: 2.2 },
+    { name: 'חולון',    spawnRate: 92,  minRate: 50, speed: 1.8 },
+    { name: 'דימונה',   spawnRate: 70,  minRate: 38, speed: 2.5 },
+    { name: 'אילת',     spawnRate: 54,  minRate: 30, speed: 3.2 },
+];
+const POINTS_PER_LEVEL = 700;
+
 // ── State ──────────────────────────────────────────────────────────────
-let score = 0, lives = 5, level = 1, frameCount = 0;
-let gameStarted = false, gameOver = false;
+let score = 0, frameCount = 0;
+let cityIdx = 0, levelScoreBase = 0;
+let gameStarted = false, gameOver = false, victory = false;
+let levelTransition = false, transitionTimer = 0;
+let levelComplete = false, levelCompleteTimer = 0;
 let enemyMissiles = [], interceptors = [], explosions = [], stars = [];
 let houses = [];
 const HOUSE_COUNT = 5;
@@ -642,6 +656,58 @@ function drawStartScreen() {
     ctx.textAlign = 'left';
 }
 
+function drawTransition() {
+    ctx.fillStyle = 'rgba(0,0,20,0.88)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffdd44';
+    ctx.font = 'bold 26px Arial';
+    ctx.fillText(`שלב ${cityIdx + 1} מתוך ${CITIES.length}`, W/2, H/2 - 90);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 72px Arial';
+    ctx.fillText(CITIES[cityIdx].name, W/2, H/2 - 10);
+    ctx.fillStyle = '#aaccff';
+    ctx.font = '22px Arial';
+    ctx.fillText('התכוננו...', W/2, H/2 + 60);
+    // Progress bar for level
+    const pw = 400, ph = 10, px = W/2 - pw/2, py = H/2 + 100;
+    ctx.fillStyle = 'rgba(255,255,255,0.1)';
+    ctx.fillRect(px, py, pw, ph);
+    const tp = Math.min(1, transitionTimer / 150);
+    ctx.fillStyle = '#4a9eff';
+    ctx.fillRect(px, py, pw * tp, ph);
+    ctx.textAlign = 'left';
+}
+
+function drawLevelComplete() {
+    ctx.fillStyle = 'rgba(0,20,0,0.88)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#4aff9e';
+    ctx.font = 'bold 54px Arial';
+    ctx.fillText('עיר נשמרה! 🇮🇱', W/2, H/2 - 40);
+    ctx.fillStyle = '#ffdd44';
+    ctx.font = 'bold 36px Arial';
+    ctx.fillText(CITIES[cityIdx].name, W/2, H/2 + 30);
+    ctx.textAlign = 'left';
+}
+
+function drawVictory() {
+    ctx.fillStyle = 'rgba(0,10,30,0.92)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffd700';
+    ctx.font = 'bold 50px Arial';
+    ctx.fillText('🇮🇱 ישראל מנצחת! 🇮🇱', W/2, H/2 - 70);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 32px Arial';
+    ctx.fillText(`ניקוד סופי: ${score}`, W/2, H/2 + 10);
+    ctx.fillStyle = '#aaa';
+    ctx.font = '22px Arial';
+    ctx.fillText('לחץ לשחק שוב', W/2, H/2 + 70);
+    ctx.textAlign = 'left';
+}
+
 function drawGameOverScreen() {
     ctx.fillStyle = 'rgba(0,0,0,0.78)';
     ctx.fillRect(0, 0, W, H);
@@ -662,6 +728,16 @@ function drawGameOverScreen() {
 }
 
 // ── Spawn / fire ───────────────────────────────────────────────────────
+function startLevel() {
+    levelScoreBase = score;
+    enemyMissiles = []; interceptors = []; explosions = [];
+    initHouses();
+    levelTransition = true;
+    transitionTimer = 0;
+    levelComplete = false;
+    updateHUD();
+}
+
 function spawnEnemy() {
     const alive = houses.filter(h => h.alive);
     if (!alive.length) return;
@@ -670,7 +746,8 @@ function spawnEnemy() {
     const dx = target.x + target.w/2 - sx;
     const dy = target.y - 0;
     const dist = Math.hypot(dx, dy);
-    const speed = 1.2 + level * 0.25 + Math.random() * 0.5;
+    const city = CITIES[cityIdx];
+    const speed = city.speed + Math.random() * 0.5;
     enemyMissiles.push({
         x: sx, y: 0,
         vx: dx/dist * speed, vy: dy/dist * speed,
@@ -700,7 +777,7 @@ function boom(x, y, r) {
 // ── Update DOM ─────────────────────────────────────────────────────────
 function updateHUD() {
     document.getElementById('score').textContent = `ניקוד: ${score}`;
-    document.getElementById('level').textContent  = `שלב ${level}`;
+    document.getElementById('level').textContent  = `${CITIES[cityIdx].name} (${cityIdx+1}/${CITIES.length})`;
     const h = '❤️'.repeat(Math.max(0, houses.filter(h => h.alive).length))
             + '🖤'.repeat(Math.max(0, houses.filter(h => !h.alive).length));
     document.getElementById('lives').textContent = `בתים: ${h}`;
@@ -708,12 +785,37 @@ function updateHUD() {
 
 // ── Main update loop ───────────────────────────────────────────────────
 function update() {
-    if (!gameStarted || gameOver) return;
-    frameCount++;
-    level = 1 + Math.floor(score / 300);
+    if (!gameStarted || gameOver || victory) return;
 
-    // Spawn enemies
-    const rate = Math.max(45, 130 - level * 12);
+    if (levelTransition) {
+        transitionTimer++;
+        if (transitionTimer >= 150) levelTransition = false;
+        return;
+    }
+    if (levelComplete) {
+        levelCompleteTimer++;
+        if (levelCompleteTimer >= 120) {
+            levelComplete = false;
+            cityIdx++;
+            if (cityIdx >= CITIES.length) { victory = true; return; }
+            startLevel();
+        }
+        return;
+    }
+
+    frameCount++;
+
+    // Check level complete
+    if (score >= levelScoreBase + POINTS_PER_LEVEL) {
+        levelComplete = true;
+        levelCompleteTimer = 0;
+        return;
+    }
+
+    // Spawn enemies using city-specific rate
+    const city = CITIES[cityIdx];
+    const progress = Math.floor((score - levelScoreBase) / 100);
+    const rate = Math.max(city.minRate, city.spawnRate - progress * 4);
     if (frameCount % rate === 0) spawnEnemy();
 
     // Update enemy missiles
@@ -769,8 +871,11 @@ function draw() {
     interceptors.forEach(m => { if (m.active) drawInterceptor(m); });
     explosions.forEach(drawExplosion);
 
-    if (!gameStarted)   drawStartScreen();
-    else if (gameOver)  drawGameOverScreen();
+    if (!gameStarted)            drawStartScreen();
+    else if (victory)            drawVictory();
+    else if (gameOver)           drawGameOverScreen();
+    else if (levelTransition)    drawTransition();
+    else if (levelComplete)      drawLevelComplete();
 }
 
 function loop() { update(); draw(); requestAnimationFrame(loop); }
@@ -789,21 +894,20 @@ function handleInput(mx, my) {
     if (!gameStarted) {
         initAudio();
         gameStarted = true;
-        initHouses();
-        updateHUD();
+        cityIdx = 0; score = 0; frameCount = 0;
+        startLevel();
         startBgMusic();
         return;
     }
-    if (gameOver) {
-        gameOver = false;
-        gameStarted = true;
-        score = 0; level = 1; frameCount = 0;
+    if (victory || gameOver) {
+        victory = false; gameOver = false;
+        score = 0; cityIdx = 0; frameCount = 0;
         enemyMissiles = []; interceptors = []; explosions = [];
-        initHouses();
-        updateHUD();
+        startLevel();
         startBgMusic();
         return;
     }
+    if (levelTransition || levelComplete) return;
     fireInterceptor(mx, my);
 }
 
@@ -827,6 +931,7 @@ canvas.addEventListener('touchmove', e => {
 initHouses();
 updateHUD();
 loop();
+
 </script>
 </body>
 </html>
