@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=800, initial-scale=1.0, user-scalable=no">
     <title>כיפת ברזל - Iron Dome</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -29,26 +29,24 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            width: 100%;
-            max-width: 800px;
+            width: 800px;
             padding: 6px 12px;
             background: rgba(0,0,0,0.4);
             border-radius: 8px;
             margin-bottom: 8px;
             border: 1px solid #1a4a7a;
         }
-        #score { color: #4aff9e; font-size: clamp(14px, 2.5vw, 22px); font-weight: bold; }
-        #level  { color: #ffdd44; font-size: clamp(12px, 2vw, 18px); font-weight: bold; }
-        #lives  { color: #ff6644; font-size: clamp(14px, 2.5vw, 22px); font-weight: bold; }
+        #score { color: #4aff9e; font-size: 20px; font-weight: bold; }
+        #level  { color: #ffdd44; font-size: 17px; font-weight: bold; }
+        #lives  { color: #ff6644; font-size: 20px; font-weight: bold; }
         #gameCanvas {
             border: 2px solid #1a4a7a;
             border-radius: 8px;
             cursor: crosshair;
             box-shadow: 0 0 40px rgba(74, 158, 255, 0.3);
             display: block;
-            width: 100%;
-            max-width: 800px;
-            height: auto;
+            width: 800px;
+            height: 560px;
             touch-action: none;
         }
         #instructions {
