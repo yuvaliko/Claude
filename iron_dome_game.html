@@ -320,24 +320,19 @@ function scheduleBg() {
 function startBgMusic() {
     if (!audioCtx) return;
     stopBgMusic();
-    const doStart = () => {
-        const now  = audioCtx.currentTime;
-        melodyTime = bassTime = percTime = now + 0.3;
-        melodyIdx  = bassIdx = percIdx  = 0;
-        droneOsc = audioCtx.createOscillator();
-        const dg = audioCtx.createGain();
-        droneOsc.type = 'sine'; droneOsc.frequency.value = 55;
-        dg.gain.value = 0.05;
-        droneOsc.connect(dg); dg.connect(masterGain);
-        droneOsc.start();
-        bgTimer = setInterval(scheduleBg, 50);
-    };
-    // iOS: wait for context to be running before scheduling notes
-    if (audioCtx.state === 'running') {
-        doStart();
-    } else {
-        audioCtx.resume().then(doStart);
-    }
+    // Resume synchronously — iOS requires audio scheduling in the gesture call stack
+    audioCtx.resume();
+    const now = audioCtx.currentTime;
+    // 1s ahead so context has time to start before first note plays
+    melodyTime = bassTime = percTime = now + 1.0;
+    melodyIdx  = bassIdx = percIdx  = 0;
+    droneOsc = audioCtx.createOscillator();
+    const dg = audioCtx.createGain();
+    droneOsc.type = 'sine'; droneOsc.frequency.value = 55;
+    dg.gain.value = 0.05;
+    droneOsc.connect(dg); dg.connect(masterGain);
+    droneOsc.start(now + 1.0);
+    bgTimer = setInterval(scheduleBg, 50);
 }
 
 function stopBgMusic() {
