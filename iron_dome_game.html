@@ -92,12 +92,12 @@ const W = canvas.width, H = canvas.height;
 
 // ── Cities ─────────────────────────────────────────────────────────────
 const CITIES = [
-    { name: 'תל אביב',  spawnRate: 120, minRate: 80, speed: 1.1, killsNeeded: 10 },
-    { name: 'חיפה',     spawnRate: 110, minRate: 72, speed: 1.3, killsNeeded: 12 },
-    { name: 'באר שבע',  spawnRate: 100, minRate: 65, speed: 1.6, killsNeeded: 14 },
-    { name: 'חולון',    spawnRate: 90,  minRate: 58, speed: 1.9, killsNeeded: 16 },
-    { name: 'דימונה',   spawnRate: 80,  minRate: 50, speed: 2.2, killsNeeded: 18 },
-    { name: 'אילת',     spawnRate: 70,  minRate: 42, speed: 2.6, killsNeeded: 20 },
+    { name: 'תל אביב',  spawnRate: 120, minRate: 80, speed: 1.1, killsNeeded: 10, launcherX: 400 },
+    { name: 'חיפה',     spawnRate: 110, minRate: 72, speed: 1.3, killsNeeded: 12, launcherX: 200 },
+    { name: 'באר שבע',  spawnRate: 100, minRate: 65, speed: 1.6, killsNeeded: 14, launcherX: 580 },
+    { name: 'חולון',    spawnRate: 90,  minRate: 58, speed: 1.9, killsNeeded: 16, launcherX: 300 },
+    { name: 'דימונה',   spawnRate: 80,  minRate: 50, speed: 2.2, killsNeeded: 18, launcherX: 520 },
+    { name: 'אילת',     spawnRate: 70,  minRate: 42, speed: 2.6, killsNeeded: 20, launcherX: 390 },
 ];
 
 // ── State ──────────────────────────────────────────────────────────────
@@ -463,49 +463,78 @@ function drawFlame(cx, cy) {
     }
 }
 
+function getLauncherX() {
+    return CITIES[cityIdx].launcherX;
+}
+
 function drawIronDomeLauncher() {
-    const bx = W / 2, by = GROUND_Y - 10;
-    // Vehicle body
+    const bx = getLauncherX(), by = GROUND_Y - 10;
+
+    // Vehicle body (bigger)
     ctx.fillStyle = '#4a5a44';
     ctx.beginPath();
-    ctx.roundRect(bx - 35, by - 22, 70, 26, 5);
+    ctx.roundRect(bx - 52, by - 28, 104, 32, 7);
     ctx.fill();
+    // Israeli flag stripes on body
+    ctx.fillStyle = '#0038b8';
+    ctx.fillRect(bx - 52, by - 28, 104, 5);
+    ctx.fillRect(bx - 52, by - 1,  104, 5);
+    // Top platform
     ctx.fillStyle = '#3a4a34';
-    ctx.fillRect(bx - 30, by - 30, 60, 10);
-    // Wheels
-    [bx - 22, bx, bx + 22].forEach(wx => {
+    ctx.fillRect(bx - 44, by - 40, 88, 14);
+
+    // Wheels (4 wheels)
+    [-33, -11, 11, 33].forEach(ox => {
         ctx.fillStyle = '#222';
         ctx.beginPath();
-        ctx.arc(wx, by + 6, 9, 0, Math.PI * 2);
+        ctx.arc(bx + ox, by + 10, 11, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = '#555';
+        ctx.strokeStyle = '#666';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(wx, by + 6, 5, 0, Math.PI * 2);
+        ctx.arc(bx + ox, by + 10, 6, 0, Math.PI * 2);
         ctx.stroke();
     });
-    // Launcher tubes (angled left)
+
+    // Launcher tubes (4 tubes, angled left)
     ctx.save();
-    ctx.translate(bx - 5, by - 30);
+    ctx.translate(bx - 8, by - 40);
     ctx.rotate(-Math.PI / 5);
-    for (let t = 0; t < 3; t++) {
-        ctx.fillStyle = '#556655';
-        ctx.fillRect(-6 + t * 6, -28, 5, 32);
+    for (let t = 0; t < 4; t++) {
+        ctx.fillStyle = '#607060';
+        ctx.fillRect(-9 + t * 7, -38, 6, 42);
         ctx.strokeStyle = '#3a4a3a';
         ctx.lineWidth = 1;
-        ctx.strokeRect(-6 + t * 6, -28, 5, 32);
+        ctx.strokeRect(-9 + t * 7, -38, 6, 42);
+        // Missile tip visible
+        ctx.fillStyle = '#0038b8';
+        ctx.beginPath();
+        ctx.moveTo(-9 + t*7 + 1, -38);
+        ctx.lineTo(-9 + t*7 + 3, -44);
+        ctx.lineTo(-9 + t*7 + 5, -38);
+        ctx.closePath();
+        ctx.fill();
     }
     ctx.restore();
-    // Israeli mini-flag on antenna
-    const fx = bx + 28, fy = by - 38;
-    ctx.strokeStyle = '#aaa'; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(fx, by - 8); ctx.stroke();
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(fx, fy, 18, 12);
+
+    // Flagpole + large Israeli flag
+    const px = bx + 46, pBase = by - 10, pTop = by - 80;
+    ctx.strokeStyle = '#ccc'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(px, pBase); ctx.lineTo(px, pTop); ctx.stroke();
+
+    // Flag (large, clear)
+    const fw = 52, fh = 34, fy2 = pTop;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(px, fy2, fw, fh);
+    // Blue stripes
     ctx.fillStyle = '#0038b8';
-    ctx.fillRect(fx, fy, 18, 2.5);
-    ctx.fillRect(fx, fy + 9.5, 18, 2.5);
-    drawStarOfDavid(fx + 9, fy + 6, 3.5, '#0038b8');
+    ctx.fillRect(px, fy2,          fw, fh * 0.2);
+    ctx.fillRect(px, fy2 + fh*0.8, fw, fh * 0.2);
+    // Star of David (centered on white section)
+    drawStarOfDavid(px + fw/2, fy2 + fh/2, 9, '#0038b8');
+    // Flag border
+    ctx.strokeStyle = '#aaa'; ctx.lineWidth = 0.5;
+    ctx.strokeRect(px, fy2, fw, fh);
 }
 
 // ── Enemy missile (Iranian) ────────────────────────────────────────────
@@ -836,7 +865,7 @@ function spawnEnemy() {
 
 function fireInterceptor(tx, ty) {
     sfxLaunch();
-    const sx = W/2, sy = GROUND_Y - 35;
+    const sx = getLauncherX(), sy = GROUND_Y - 45;
     const dx = tx - sx, dy = ty - sy;
     const dist = Math.hypot(dx, dy);
     const speed = 6;
