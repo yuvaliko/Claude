@@ -875,6 +875,11 @@ function drawStartScreen() {
     ctx.font = 'bold 36px Arial';
     ctx.fillText('▶  לחץ להתחיל!  ◀', W/2, H/2 + 70);
 
+    // iOS mute switch warning
+    ctx.fillStyle = 'rgba(255,180,50,0.85)';
+    ctx.font = '18px Arial';
+    ctx.fillText('📱 iPhone: ודא שמתג ההשתקה כבוי לסאונד', W/2, H/2 + 130);
+
     ctx.textAlign = 'left';
 }
 
