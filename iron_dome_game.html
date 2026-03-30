@@ -2,10 +2,31 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=800, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>כיפת ברזל - Iron Dome</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* Portrait: show rotate message, hide game */
+        #rotateMsg {
+            display: none;
+            position: fixed; inset: 0;
+            background: #0a0a1e;
+            color: #fff;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            text-align: center;
+            z-index: 9999;
+            gap: 20px;
+        }
+        #rotateMsg span { font-size: 64px; }
+        @media (orientation: portrait) {
+            #rotateMsg { display: flex; }
+            #gameWrapper { display: none; }
+        }
+
         body {
             background: #0a0a1e;
             display: flex;
@@ -16,6 +37,14 @@
             font-family: 'Arial', sans-serif;
             overflow: hidden;
             user-select: none;
+        }
+
+        /* Landscape: scale entire game to fit screen height */
+        #gameWrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transform-origin: top center;
         }
         #title {
             color: #4a9eff;
@@ -120,16 +149,24 @@
     </style>
 </head>
 <body>
-    <div id="title">🛡️ כיפת ברזל — Iron Dome 🛡️</div>
-    <div id="ui">
-        <div id="score">ניקוד: 0</div>
-        <div id="level">שלב 1</div>
-        <div id="lives">בתים: ❤️❤️❤️❤️❤️</div>
-        <div id="lbBtn" onclick="showLeaderboard()" title="לוח תוצאות">🏆</div>
-        <div id="muteBtn" onclick="toggleMute()" title="השתק/הפעל מוזיקה">🔊</div>
+    <div id="rotateMsg">
+        <span>🔄</span>
+        <div>סובב את המכשיר למצב אופקי</div>
+        <div style="font-size:15px;color:#aaa">Rotate to landscape to play</div>
     </div>
-    <canvas id="gameCanvas" width="800" height="560"></canvas>
-    <div id="instructions">לחץ על המסך כדי לירות טיל יירוט לעבר הטילים האיראניים</div>
+
+    <div id="gameWrapper">
+        <div id="title">🛡️ כיפת ברזל — Iron Dome 🛡️</div>
+        <div id="ui">
+            <div id="score">ניקוד: 0</div>
+            <div id="level">שלב 1</div>
+            <div id="lives">בתים: ❤️❤️❤️❤️❤️</div>
+            <div id="lbBtn" onclick="showLeaderboard()" title="לוח תוצאות">🏆</div>
+            <div id="muteBtn" onclick="toggleMute()" title="השתק/הפעל מוזיקה">🔊</div>
+        </div>
+        <canvas id="gameCanvas" width="800" height="560"></canvas>
+        <div id="instructions">לחץ על המסך כדי לירות טיל יירוט לעבר הטילים האיראניים</div>
+    </div>
 
     <div id="lbModal">
         <div id="lbBox">
@@ -1204,6 +1241,19 @@ canvas.addEventListener('touchstart', e => {
 canvas.addEventListener('touchmove', e => {
     e.preventDefault();
 }, { passive: false });
+
+// ── Scale game to fit landscape screen ────────────────────────────────
+function scaleGame() {
+    const wrapper = document.getElementById('gameWrapper');
+    // Game natural size: 800 wide + ~660 total height (title+ui+canvas+instructions)
+    const gameW = 820, gameH = 660;
+    const scaleX = window.innerWidth  / gameW;
+    const scaleY = window.innerHeight / gameH;
+    const scale  = Math.min(scaleX, scaleY, 1); // never upscale on desktop
+    wrapper.style.transform = scale < 1 ? `scale(${scale})` : '';
+}
+scaleGame();
+window.addEventListener('resize', scaleGame);
 
 // ── Go! ────────────────────────────────────────────────────────────────
 initHouses();
