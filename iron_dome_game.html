@@ -166,6 +166,7 @@ let prevTier = 0, upgradeTimer = 0;
 let gameStarted = false, gameOver = false, victory = false;
 let levelTransition = false, transitionTimer = 0;
 let levelComplete = false, levelCompleteTimer = 0;
+let fireworks = [];
 let enemyMissiles = [], interceptors = [], explosions = [], stars = [];
 let houses = [];
 const HOUSE_COUNT = 5;
@@ -880,16 +881,88 @@ function drawTransition() {
     ctx.textAlign = 'left';
 }
 
+function spawnFirework() {
+    const x = 80 + Math.random() * (W - 160);
+    const y = 60 + Math.random() * (H * 0.55);
+    const hue = Math.random() < 0.5 ? (Math.random() < 0.5 ? 220 : 0) : Math.floor(Math.random() * 360);
+    const particles = [];
+    for (let i = 0; i < 48; i++) {
+        const ang = (i / 48) * Math.PI * 2;
+        const spd = 2 + Math.random() * 3.5;
+        particles.push({ x, y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, life: 1 });
+    }
+    fireworks.push({ x, y, particles, hue, age: 0 });
+}
+
+function updateFireworks() {
+    // Spawn new fireworks
+    if (levelCompleteTimer % 18 === 0) spawnFirework();
+    fireworks.forEach(fw => {
+        fw.age++;
+        fw.particles.forEach(p => {
+            p.x += p.vx; p.y += p.vy;
+            p.vy += 0.06; // gravity
+            p.vx *= 0.97;
+            p.life -= 0.022;
+        });
+    });
+    fireworks = fireworks.filter(fw => fw.particles.some(p => p.life > 0));
+}
+
 function drawLevelComplete() {
-    ctx.fillStyle = 'rgba(0,20,0,0.88)';
+    // Dark overlay
+    ctx.fillStyle = 'rgba(0,10,20,0.82)';
     ctx.fillRect(0, 0, W, H);
+
+    updateFireworks();
+
+    // Draw fireworks
+    fireworks.forEach(fw => {
+        fw.particles.forEach(p => {
+            if (p.life <= 0) return;
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillStyle = `hsl(${fw.hue},100%,65%)`;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+        });
+    });
+    ctx.globalAlpha = 1;
+
+    // Rising Israeli flag — rises from bottom to center over first 60 frames
+    const rise = Math.min(1, levelCompleteTimer / 60);
+    const flagY = H - (H * 0.35 + H * 0.25 * rise); // rises up
+    const fw2 = 160, fh2 = 104, fx2 = W / 2 - fw2 / 2;
+
+    // Flag shadow
+    ctx.shadowColor = 'rgba(0,56,184,0.5)';
+    ctx.shadowBlur = 20;
+    // White background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(fx2, flagY, fw2, fh2);
+    // Blue stripes
+    ctx.fillStyle = '#0038b8';
+    ctx.fillRect(fx2, flagY,              fw2, fh2 * 0.2);
+    ctx.fillRect(fx2, flagY + fh2 * 0.8, fw2, fh2 * 0.2);
+    // Star of David
+    drawStarOfDavid(fx2 + fw2 / 2, flagY + fh2 / 2, 28, '#0038b8');
+    ctx.shadowBlur = 0;
+
+    // Text below flag
+    const textY = flagY + fh2 + 44;
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#4aff9e';
-    ctx.font = 'bold 54px Arial';
-    ctx.fillText('עיר נשמרה! 🇮🇱', W/2, H/2 - 40);
-    ctx.fillStyle = '#ffdd44';
-    ctx.font = 'bold 36px Arial';
-    ctx.fillText(CITIES[cityIdx].name, W/2, H/2 + 30);
+
+    // Glow effect on text
+    ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 18;
+    ctx.fillStyle = '#ffd700';
+    ctx.font = 'bold 48px Arial';
+    ctx.fillText('🇮🇱 ישראל מנצחת! 🇮🇱', W / 2, textY);
+    ctx.shadowBlur = 0;
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 26px Arial';
+    ctx.fillText(`עיר ${CITIES[cityIdx].name} נשמרה!`, W / 2, textY + 48);
+
     ctx.textAlign = 'left';
 }
 
@@ -995,7 +1068,7 @@ function update() {
     }
     if (levelComplete) {
         levelCompleteTimer++;
-        if (levelCompleteTimer >= 120) {
+        if (levelCompleteTimer >= 210) {
             levelComplete = false;
             cityIdx++;
             if (cityIdx >= CITIES.length) { saveScore(score); victory = true; return; }
@@ -1011,6 +1084,7 @@ function update() {
     if (levelKills >= city.killsNeeded) {
         levelComplete = true;
         levelCompleteTimer = 0;
+        fireworks = [];
         return;
     }
 
