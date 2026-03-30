@@ -231,11 +231,14 @@ const BASS = [
 const PERC = [0,-1,0,-1, 1,-1,0,-1, 0,-1,0,-1, 1,-1,1,-1];
 
 function initAudio() {
-    if (audioCtx) return;
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    masterGain = audioCtx.createGain();
-    masterGain.gain.value = 0.5;
-    masterGain.connect(audioCtx.destination);
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        masterGain = audioCtx.createGain();
+        masterGain.gain.value = 0.5;
+        masterGain.connect(audioCtx.destination);
+    }
+    // iOS Safari suspends AudioContext until explicitly resumed inside a user gesture
+    if (audioCtx.state === 'suspended') audioCtx.resume();
 }
 
 function toggleMute() {
@@ -1205,6 +1208,8 @@ function getPos(e) {
 }
 
 function handleInput(mx, my) {
+    // Always try to resume audio on any user interaction (required for iOS)
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
     if (!gameStarted) {
         initAudio();
         gameStarted = true;
