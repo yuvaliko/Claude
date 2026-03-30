@@ -561,71 +561,74 @@ function getLauncherX() {
 function drawIronDomeLauncher() {
     const bx = getLauncherX(), by = GROUND_Y - 10;
 
-    // Vehicle body (bigger)
-    ctx.fillStyle = '#4a5a44';
-    ctx.beginPath();
-    ctx.roundRect(bx - 52, by - 28, 104, 32, 7);
-    ctx.fill();
-    // Israeli flag stripes on body
-    ctx.fillStyle = '#0038b8';
-    ctx.fillRect(bx - 52, by - 28, 104, 5);
-    ctx.fillRect(bx - 52, by - 1,  104, 5);
-    // Top platform
-    ctx.fillStyle = '#3a4a34';
-    ctx.fillRect(bx - 44, by - 40, 88, 14);
-
-    // Wheels (4 wheels)
-    [-33, -11, 11, 33].forEach(ox => {
-        ctx.fillStyle = '#222';
-        ctx.beginPath();
-        ctx.arc(bx + ox, by + 10, 11, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#666';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(bx + ox, by + 10, 6, 0, Math.PI * 2);
-        ctx.stroke();
-    });
-
-    // Launcher tubes (4 tubes, angled left)
-    ctx.save();
-    ctx.translate(bx - 8, by - 40);
-    ctx.rotate(-Math.PI / 5);
-    for (let t = 0; t < 4; t++) {
-        ctx.fillStyle = '#607060';
-        ctx.fillRect(-9 + t * 7, -38, 6, 42);
-        ctx.strokeStyle = '#3a4a3a';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(-9 + t * 7, -38, 6, 42);
-        // Missile tip visible
-        ctx.fillStyle = '#0038b8';
-        ctx.beginPath();
-        ctx.moveTo(-9 + t*7 + 1, -38);
-        ctx.lineTo(-9 + t*7 + 3, -44);
-        ctx.lineTo(-9 + t*7 + 5, -38);
-        ctx.closePath();
-        ctx.fill();
-    }
-    ctx.restore();
-
-    // Flagpole + large Israeli flag
-    const px = bx + 46, pBase = by - 10, pTop = by - 80;
-    ctx.strokeStyle = '#ccc'; ctx.lineWidth = 2;
+    // ── Flagpole + LARGE Israeli flag (drawn first, behind launcher) ──
+    const px = bx + 62, pBase = by + 4, pTop = by - 110;
+    ctx.strokeStyle = '#ddd'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(px, pBase); ctx.lineTo(px, pTop); ctx.stroke();
 
-    // Flag (large, clear)
-    const fw = 52, fh = 34, fy2 = pTop;
+    const fw = 90, fh = 58, fy2 = pTop;
+    // White background
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(px, fy2, fw, fh);
-    // Blue stripes
+    // Top blue stripe
     ctx.fillStyle = '#0038b8';
-    ctx.fillRect(px, fy2,          fw, fh * 0.2);
-    ctx.fillRect(px, fy2 + fh*0.8, fw, fh * 0.2);
-    // Star of David (centered on white section)
-    drawStarOfDavid(px + fw/2, fy2 + fh/2, 9, '#0038b8');
-    // Flag border
-    ctx.strokeStyle = '#aaa'; ctx.lineWidth = 0.5;
+    ctx.fillRect(px, fy2, fw, fh * 0.2);
+    // Bottom blue stripe
+    ctx.fillRect(px, fy2 + fh * 0.8, fw, fh * 0.2);
+    // Star of David — big, centered on white section
+    drawStarOfDavid(px + fw / 2, fy2 + fh / 2, 16, '#0038b8');
+    // Flag shadow/border
+    ctx.strokeStyle = 'rgba(0,56,184,0.3)'; ctx.lineWidth = 1;
     ctx.strokeRect(px, fy2, fw, fh);
+
+    // ── Vehicle body ──
+    ctx.fillStyle = '#4a5a44';
+    ctx.beginPath();
+    ctx.roundRect(bx - 60, by - 30, 120, 36, 8);
+    ctx.fill();
+    // Israeli flag stripe decoration on body
+    ctx.fillStyle = '#0038b8';
+    ctx.fillRect(bx - 60, by - 30, 120, 6);
+    ctx.fillRect(bx - 60, by,      120, 6);
+    // Body detail line
+    ctx.fillStyle = '#3a4a34';
+    ctx.fillRect(bx - 52, by - 42, 100, 14);
+
+    // ── Wheels (5 wheels) ──
+    [-42, -21, 0, 21, 42].forEach(ox => {
+        ctx.fillStyle = '#1a1a1a';
+        ctx.beginPath();
+        ctx.arc(bx + ox, by + 14, 13, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#555'; ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(bx + ox, by + 14, 7, 0, Math.PI * 2);
+        ctx.stroke();
+        // Wheel bolt
+        ctx.fillStyle = '#888';
+        ctx.beginPath();
+        ctx.arc(bx + ox, by + 14, 3, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    // ── Launcher tubes (5 tubes, angled) ──
+    ctx.save();
+    ctx.translate(bx - 10, by - 42);
+    ctx.rotate(-Math.PI / 5);
+    for (let t = 0; t < 5; t++) {
+        ctx.fillStyle = '#607060';
+        ctx.fillRect(-12 + t * 8, -44, 7, 48);
+        ctx.strokeStyle = '#3a4a3a'; ctx.lineWidth = 1;
+        ctx.strokeRect(-12 + t * 8, -44, 7, 48);
+        // Missile tip
+        ctx.fillStyle = '#0038b8';
+        ctx.beginPath();
+        ctx.moveTo(-12 + t*8 + 1, -44);
+        ctx.lineTo(-12 + t*8 + 3.5, -52);
+        ctx.lineTo(-12 + t*8 + 6, -44);
+        ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
 }
 
 // ── Enemy missile (Iranian) ────────────────────────────────────────────
