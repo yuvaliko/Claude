@@ -220,12 +220,30 @@ function _unlockAudio() {
         if (audioCtx.state === 'suspended') audioCtx.resume();
         return;
     }
+    // Trick iOS into 'playback' audio session (bypasses silent switch):
+    // play a real HTMLAudioElement first, which elevates the session category
+    try {
+        const wav = (() => {
+            const buf = new ArrayBuffer(46);
+            const v = new DataView(buf);
+            const ws = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+            ws(0,'RIFF'); v.setUint32(4,38,true); ws(8,'WAVE');
+            ws(12,'fmt '); v.setUint32(16,16,true); v.setUint16(20,1,true);
+            v.setUint16(22,1,true); v.setUint32(24,44100,true);
+            v.setUint32(28,88200,true); v.setUint16(32,2,true); v.setUint16(34,16,true);
+            ws(36,'data'); v.setUint32(40,2,true); v.setInt16(44,1,true);
+            return URL.createObjectURL(new Blob([buf], {type:'audio/wav'}));
+        })();
+        const el = Object.assign(new Audio(wav), { volume: 0.01 });
+        el.play().catch(() => {});
+    } catch(e) {}
+
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     masterGain = audioCtx.createGain();
     masterGain.gain.value = 0.5;
     masterGain.connect(audioCtx.destination);
     audioCtx.resume();
-    // iOS ignores silent buffers — use a real (very quiet) tone to unlock
+    // Unlock Web Audio with a real tone
     const sr = audioCtx.sampleRate;
     const b  = audioCtx.createBuffer(1, sr * 0.1, sr);
     const d  = b.getChannelData(0);
