@@ -214,6 +214,25 @@ let droneOsc = null, bgTimer = null;
 let melodyTime = 0, bassTime = 0, percTime = 0;
 let melodyIdx  = 0, bassIdx  = 0, percIdx  = 0;
 
+// Unlock Web Audio on first ANY touch/click — iOS requires this in user gesture
+function _unlockAudio() {
+    if (audioCtx) {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        return;
+    }
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.5;
+    masterGain.connect(audioCtx.destination);
+    audioCtx.resume();
+    // Silent buffer: the actual iOS unlock trigger
+    const b = audioCtx.createBuffer(1, 1, audioCtx.sampleRate);
+    const s = audioCtx.createBufferSource();
+    s.buffer = b; s.connect(audioCtx.destination); s.start(0);
+}
+document.addEventListener('touchstart', _unlockAudio, { once: true, passive: true });
+document.addEventListener('click',      _unlockAudio, { once: true, passive: true });
+
 const BPM  = 108;
 const BEAT = 60 / BPM; // ~0.556s per beat
 
@@ -232,21 +251,7 @@ const BASS = [
 const PERC = [0,-1,0,-1, 1,-1,0,-1, 0,-1,0,-1, 1,-1,1,-1];
 
 function initAudio() {
-    if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        masterGain = audioCtx.createGain();
-        masterGain.gain.value = 0.5;
-        masterGain.connect(audioCtx.destination);
-    }
-    // Play silent buffer synchronously — required to unlock iOS Safari Web Audio
-    try {
-        const buf = audioCtx.createBuffer(1, 1, audioCtx.sampleRate);
-        const src = audioCtx.createBufferSource();
-        src.buffer = buf;
-        src.connect(audioCtx.destination);
-        src.start(0);
-    } catch(e) {}
-    if (audioCtx.state === 'suspended') audioCtx.resume();
+    _unlockAudio(); // ensure context exists and is running
 }
 
 function toggleMute() {
@@ -320,18 +325,16 @@ function scheduleBg() {
 function startBgMusic() {
     if (!audioCtx) return;
     stopBgMusic();
-    // Resume synchronously — iOS requires audio scheduling in the gesture call stack
     audioCtx.resume();
     const now = audioCtx.currentTime;
-    // 1s ahead so context has time to start before first note plays
-    melodyTime = bassTime = percTime = now + 1.0;
+    melodyTime = bassTime = percTime = now + 0.3;
     melodyIdx  = bassIdx = percIdx  = 0;
     droneOsc = audioCtx.createOscillator();
     const dg = audioCtx.createGain();
     droneOsc.type = 'sine'; droneOsc.frequency.value = 55;
     dg.gain.value = 0.05;
     droneOsc.connect(dg); dg.connect(masterGain);
-    droneOsc.start(now + 1.0);
+    droneOsc.start(now + 0.3);
     bgTimer = setInterval(scheduleBg, 50);
 }
 
