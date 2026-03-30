@@ -238,21 +238,15 @@ function initAudio() {
         masterGain.gain.value = 0.5;
         masterGain.connect(audioCtx.destination);
     }
-    // iOS Safari: resume suspended context + play a silent 1-frame buffer to unlock audio
-    const resume = () => {
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        // Silent buffer unlock (required on iOS to enable scheduled audio)
+    // Play silent buffer synchronously — required to unlock iOS Safari Web Audio
+    try {
         const buf = audioCtx.createBuffer(1, 1, audioCtx.sampleRate);
         const src = audioCtx.createBufferSource();
         src.buffer = buf;
         src.connect(audioCtx.destination);
         src.start(0);
-    };
-    if (audioCtx.state === 'suspended') {
-        audioCtx.resume().then(resume);
-    } else {
-        resume();
-    }
+    } catch(e) {}
+    if (audioCtx.state === 'suspended') audioCtx.resume();
 }
 
 function toggleMute() {
@@ -326,17 +320,24 @@ function scheduleBg() {
 function startBgMusic() {
     if (!audioCtx) return;
     stopBgMusic();
-    const now  = audioCtx.currentTime;
-    melodyTime = bassTime = percTime = now + 0.15;
-    melodyIdx  = bassIdx = percIdx  = 0;
-    // Low drone
-    droneOsc = audioCtx.createOscillator();
-    const dg = audioCtx.createGain();
-    droneOsc.type = 'sine'; droneOsc.frequency.value = 55; // A1
-    dg.gain.value = 0.05;
-    droneOsc.connect(dg); dg.connect(masterGain);
-    droneOsc.start();
-    bgTimer = setInterval(scheduleBg, 50);
+    const doStart = () => {
+        const now  = audioCtx.currentTime;
+        melodyTime = bassTime = percTime = now + 0.3;
+        melodyIdx  = bassIdx = percIdx  = 0;
+        droneOsc = audioCtx.createOscillator();
+        const dg = audioCtx.createGain();
+        droneOsc.type = 'sine'; droneOsc.frequency.value = 55;
+        dg.gain.value = 0.05;
+        droneOsc.connect(dg); dg.connect(masterGain);
+        droneOsc.start();
+        bgTimer = setInterval(scheduleBg, 50);
+    };
+    // iOS: wait for context to be running before scheduling notes
+    if (audioCtx.state === 'running') {
+        doStart();
+    } else {
+        audioCtx.resume().then(doStart);
+    }
 }
 
 function stopBgMusic() {
