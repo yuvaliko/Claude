@@ -225,10 +225,14 @@ function _unlockAudio() {
     masterGain.gain.value = 0.5;
     masterGain.connect(audioCtx.destination);
     audioCtx.resume();
-    // Silent buffer: the actual iOS unlock trigger
-    const b = audioCtx.createBuffer(1, 1, audioCtx.sampleRate);
+    // iOS ignores silent buffers — use a real (very quiet) tone to unlock
+    const sr = audioCtx.sampleRate;
+    const b  = audioCtx.createBuffer(1, sr * 0.1, sr);
+    const d  = b.getChannelData(0);
+    for (let i = 0; i < d.length; i++)
+        d[i] = Math.sin(2 * Math.PI * 440 * i / sr) * 0.001;
     const s = audioCtx.createBufferSource();
-    s.buffer = b; s.connect(audioCtx.destination); s.start(0);
+    s.buffer = b; s.connect(masterGain); s.start(0);
 }
 document.addEventListener('touchstart', _unlockAudio, { once: true, passive: true });
 document.addEventListener('click',      _unlockAudio, { once: true, passive: true });
