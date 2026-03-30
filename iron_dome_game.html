@@ -92,18 +92,17 @@ const W = canvas.width, H = canvas.height;
 
 // ── Cities ─────────────────────────────────────────────────────────────
 const CITIES = [
-    { name: 'תל אביב',  spawnRate: 115, minRate: 62, speed: 1.2 },
-    { name: 'חיפה',     spawnRate: 100, minRate: 54, speed: 1.6 },
-    { name: 'באר שבע',  spawnRate: 78,  minRate: 42, speed: 2.2 },
-    { name: 'חולון',    spawnRate: 92,  minRate: 50, speed: 1.8 },
-    { name: 'דימונה',   spawnRate: 70,  minRate: 38, speed: 2.5 },
-    { name: 'אילת',     spawnRate: 54,  minRate: 30, speed: 3.2 },
+    { name: 'תל אביב',  spawnRate: 120, minRate: 80, speed: 1.1, killsNeeded: 10 },
+    { name: 'חיפה',     spawnRate: 110, minRate: 72, speed: 1.3, killsNeeded: 12 },
+    { name: 'באר שבע',  spawnRate: 100, minRate: 65, speed: 1.6, killsNeeded: 14 },
+    { name: 'חולון',    spawnRate: 90,  minRate: 58, speed: 1.9, killsNeeded: 16 },
+    { name: 'דימונה',   spawnRate: 80,  minRate: 50, speed: 2.2, killsNeeded: 18 },
+    { name: 'אילת',     spawnRate: 70,  minRate: 42, speed: 2.6, killsNeeded: 20 },
 ];
-const POINTS_PER_LEVEL = 700;
 
 // ── State ──────────────────────────────────────────────────────────────
-let score = 0, frameCount = 0, totalKills = 0;
-let cityIdx = 0, levelScoreBase = 0;
+let score = 0, frameCount = 0, totalKills = 0, levelKills = 0;
+let cityIdx = 0;
 let prevTier = 0, upgradeTimer = 0;
 let gameStarted = false, gameOver = false, victory = false;
 let levelTransition = false, transitionTimer = 0;
@@ -808,7 +807,7 @@ function drawGameOverScreen() {
 
 // ── Spawn / fire ───────────────────────────────────────────────────────
 function startLevel() {
-    levelScoreBase = score;
+    levelKills = 0;
     enemyMissiles = []; interceptors = []; explosions = [];
     initHouses();
     levelTransition = true;
@@ -885,16 +884,16 @@ function update() {
     frameCount++;
 
     // Check level complete
-    if (score >= levelScoreBase + POINTS_PER_LEVEL) {
+    const city = CITIES[cityIdx];
+    if (levelKills >= city.killsNeeded) {
         levelComplete = true;
         levelCompleteTimer = 0;
         return;
     }
 
-    // Spawn enemies using city-specific rate
-    const city = CITIES[cityIdx];
-    const progress = Math.floor((score - levelScoreBase) / 100);
-    const rate = Math.max(city.minRate, city.spawnRate - progress * 4);
+    // Spawn enemies - difficulty ramps up gently as kills accumulate
+    const progress = levelKills / city.killsNeeded;
+    const rate = Math.max(city.minRate, Math.round(city.spawnRate - progress * (city.spawnRate - city.minRate)));
     if (frameCount % rate === 0) spawnEnemy();
 
     // Update enemy missiles
@@ -929,6 +928,7 @@ function update() {
                 boom(em.x, em.y, 52);
                 sfxBoom(false);
                 totalKills++;
+                levelKills++;
                 score += 100 * (getMissileTier() + 1);
                 checkUpgrade();
                 updateHUD();
@@ -984,7 +984,7 @@ function handleInput(mx, my) {
     if (victory || gameOver) {
         victory = false; gameOver = false;
         score = 0; cityIdx = 0; frameCount = 0;
-        totalKills = 0; prevTier = 0; upgradeTimer = 0;
+        totalKills = 0; levelKills = 0; prevTier = 0; upgradeTimer = 0;
         enemyMissiles = []; interceptors = []; explosions = [];
         startLevel();
         startBgMusic();
