@@ -102,8 +102,9 @@ const CITIES = [
 const POINTS_PER_LEVEL = 700;
 
 // ── State ──────────────────────────────────────────────────────────────
-let score = 0, frameCount = 0;
+let score = 0, frameCount = 0, totalKills = 0;
 let cityIdx = 0, levelScoreBase = 0;
+let prevTier = 0, upgradeTimer = 0;
 let gameStarted = false, gameOver = false, victory = false;
 let levelTransition = false, transitionTimer = 0;
 let levelComplete = false, levelCompleteTimer = 0;
@@ -554,48 +555,91 @@ function drawEnemyMissile(m) {
     }
 }
 
+function getMissileTier() {
+    return totalKills >= 15 ? 2 : totalKills >= 5 ? 1 : 0;
+}
+
 // ── Interceptor missile (Israeli) ─────────────────────────────────────
 function drawInterceptor(m) {
+    const tier = getMissileTier();
     ctx.save();
     ctx.translate(m.x, m.y);
     ctx.rotate(m.angle);
 
-    const w = 9, h = 32;
-    // Blue-white stripe pattern
-    const stripes = ['#0038b8','#fff','#0038b8','#fff','#0038b8'];
-    stripes.forEach((c, i) => {
-        ctx.fillStyle = c;
-        ctx.fillRect(-w/2, -h/2 + i*(h/5), w, h/5);
-    });
-    // Nose
-    ctx.fillStyle = '#0038b8';
-    ctx.beginPath();
-    ctx.moveTo(-w/2, -h/2);
-    ctx.lineTo(0, -h/2 - 11);
-    ctx.lineTo(w/2, -h/2);
-    ctx.closePath();
-    ctx.fill();
-    // Small fins
-    ctx.fillStyle = '#002699';
-    [[-1],[1]].forEach(([sx]) => {
-        ctx.beginPath();
-        ctx.moveTo(sx * w/2, h/2 - 7);
-        ctx.lineTo(sx * (w/2+6), h/2 + 4);
-        ctx.lineTo(sx * w/2, h/2);
-        ctx.closePath();
-        ctx.fill();
-    });
-    // Star of David in center
-    drawStarOfDavid(0, 0, 4.5, '#fff');
+    if (tier === 0) {
+        // Tamir basic
+        const w = 9, h = 32;
+        ['#0038b8','#fff','#0038b8','#fff','#0038b8'].forEach((c, i) => {
+            ctx.fillStyle = c; ctx.fillRect(-w/2, -h/2 + i*(h/5), w, h/5);
+        });
+        ctx.fillStyle = '#0038b8';
+        ctx.beginPath(); ctx.moveTo(-w/2,-h/2); ctx.lineTo(0,-h/2-11); ctx.lineTo(w/2,-h/2); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#002699';
+        [[-1],[1]].forEach(([sx]) => {
+            ctx.beginPath(); ctx.moveTo(sx*w/2,h/2-7); ctx.lineTo(sx*(w/2+6),h/2+4); ctx.lineTo(sx*w/2,h/2); ctx.closePath(); ctx.fill();
+        });
+        drawStarOfDavid(0, 0, 4.5, '#fff');
+
+    } else if (tier === 1) {
+        // Tamir Pro - bigger, brighter
+        const w = 11, h = 38;
+        ['#0038b8','#fff','#0038b8','#fff','#0038b8'].forEach((c, i) => {
+            ctx.fillStyle = c; ctx.fillRect(-w/2, -h/2 + i*(h/5), w, h/5);
+        });
+        ctx.fillStyle = '#0055ff';
+        ctx.beginPath(); ctx.moveTo(-w/2,-h/2); ctx.lineTo(0,-h/2-14); ctx.lineTo(w/2,-h/2); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#0033cc';
+        [[-1],[1]].forEach(([sx]) => {
+            ctx.beginPath(); ctx.moveTo(sx*w/2,h/2-8); ctx.lineTo(sx*(w/2+9),h/2+5); ctx.lineTo(sx*w/2,h/2); ctx.closePath(); ctx.fill();
+        });
+        drawStarOfDavid(0, 0, 5.5, '#0038b8');
+        // Glow effect
+        ctx.shadowColor = '#4af'; ctx.shadowBlur = 10;
+        ctx.strokeStyle = 'rgba(80,180,255,0.4)'; ctx.lineWidth = 2;
+        ctx.strokeRect(-w/2, -h/2, w, h);
+        ctx.shadowBlur = 0;
+
+    } else {
+        // Arrow-3 - Israeli flag body, gold accents
+        const w = 14, h = 48;
+        // Israeli flag: blue stripe / white / blue stripe
+        ctx.fillStyle = '#0038b8'; ctx.fillRect(-w/2, -h/2, w, h*0.18);
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(-w/2, -h/2+h*0.18, w, h*0.64);
+        ctx.fillStyle = '#0038b8'; ctx.fillRect(-w/2, -h/2+h*0.82, w, h*0.18);
+        // Gold nose
+        ctx.fillStyle = '#ffd700';
+        ctx.beginPath(); ctx.moveTo(-w/2,-h/2); ctx.lineTo(0,-h/2-18); ctx.lineTo(w/2,-h/2); ctx.closePath(); ctx.fill();
+        // Gold ring at nose base
+        ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 2;
+        ctx.strokeRect(-w/2, -h/2, w, 3);
+        // Gold fins (wider)
+        ctx.fillStyle = '#ffd700';
+        [[-1],[1]].forEach(([sx]) => {
+            ctx.beginPath(); ctx.moveTo(sx*w/2,h/2-10); ctx.lineTo(sx*(w/2+12),h/2+8); ctx.lineTo(sx*w/2,h/2); ctx.closePath(); ctx.fill();
+        });
+        // Star of David on white section
+        drawStarOfDavid(0, h*0.05, 7, '#0038b8');
+        // Glow
+        ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 14;
+        ctx.strokeStyle = 'rgba(255,215,0,0.35)'; ctx.lineWidth = 2;
+        ctx.strokeRect(-w/2, -h/2, w, h);
+        ctx.shadowBlur = 0;
+    }
     ctx.restore();
 
-    // Blue exhaust trail
+    // Exhaust trail
     const dx = -Math.sin(m.angle), dy = Math.cos(m.angle);
-    for (let i = 0; i < 8; i++) {
-        const t = i / 8;
-        ctx.fillStyle = `rgba(80,180,255,${(1-t)*0.8})`;
+    const trailCount = tier === 2 ? 14 : tier === 1 ? 10 : 8;
+    const trailLen   = tier === 2 ? 30 : tier === 1 ? 25 : 22;
+    for (let i = 0; i < trailCount; i++) {
+        const t = i / trailCount;
+        let color;
+        if (tier === 2)      color = i%2===0 ? `rgba(255,215,0,${(1-t)*0.9})` : `rgba(80,180,255,${(1-t)*0.9})`;
+        else if (tier === 1) color = `rgba(50,200,255,${(1-t)*0.85})`;
+        else                 color = `rgba(80,180,255,${(1-t)*0.8})`;
+        ctx.fillStyle = color;
         ctx.beginPath();
-        ctx.arc(m.x + dx*22*t, m.y + dy*22*t, (1-t)*4+1, 0, Math.PI*2);
+        ctx.arc(m.x + dx*trailLen*t, m.y + dy*trailLen*t, (1-t)*(tier+1)*2+1, 0, Math.PI*2);
         ctx.fill();
     }
 }
@@ -654,6 +698,41 @@ function drawStartScreen() {
     ctx.fillText('▶  לחץ להתחיל!  ◀', W/2, H/2 + 70);
 
     ctx.textAlign = 'left';
+}
+
+function checkUpgrade() {
+    const tier = getMissileTier();
+    if (tier > prevTier) {
+        prevTier = tier;
+        upgradeTimer = 180; // 3 seconds
+    }
+}
+
+function drawUpgradeNotif() {
+    if (upgradeTimer <= 0) return;
+    upgradeTimer--;
+    const tier = getMissileTier();
+    const names = ['טאמיר', 'טאמיר פרו ⬆️', 'חץ-3 🇮🇱'];
+    const colors = ['#4af', '#55ddff', '#ffd700'];
+    const alpha = Math.min(1, upgradeTimer / 30);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = 'rgba(0,0,30,0.85)';
+    ctx.beginPath();
+    ctx.roundRect(W/2 - 160, 80, 320, 70, 12);
+    ctx.fill();
+    ctx.strokeStyle = colors[tier];
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 16px Arial';
+    ctx.fillText('שדרוג טיל!', W/2, 108);
+    ctx.fillStyle = colors[tier];
+    ctx.font = 'bold 26px Arial';
+    ctx.fillText(names[tier], W/2, 138);
+    ctx.textAlign = 'left';
+    ctx.restore();
 }
 
 function drawTransition() {
@@ -849,7 +928,9 @@ function update() {
                 m.active  = false;
                 boom(em.x, em.y, 52);
                 sfxBoom(false);
-                score += 100;
+                totalKills++;
+                score += 100 * (getMissileTier() + 1);
+                checkUpgrade();
                 updateHUD();
                 return false;
             }
@@ -871,6 +952,7 @@ function draw() {
     interceptors.forEach(m => { if (m.active) drawInterceptor(m); });
     explosions.forEach(drawExplosion);
 
+    if (gameStarted && !gameOver && !victory) drawUpgradeNotif();
     if (!gameStarted)            drawStartScreen();
     else if (victory)            drawVictory();
     else if (gameOver)           drawGameOverScreen();
@@ -902,6 +984,7 @@ function handleInput(mx, my) {
     if (victory || gameOver) {
         victory = false; gameOver = false;
         score = 0; cityIdx = 0; frameCount = 0;
+        totalKills = 0; prevTier = 0; upgradeTimer = 0;
         enemyMissiles = []; interceptors = []; explosions = [];
         startLevel();
         startBgMusic();
