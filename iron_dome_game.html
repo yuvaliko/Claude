@@ -198,6 +198,7 @@ const CITIES = [
 let score = 0, frameCount = 0, totalKills = 0, levelKills = 0;
 let cityIdx = 0;
 let prevTier = 0, upgradeTimer = 0;
+let interceptorsLeft = 50;
 let gameStarted = false, gameOver = false, victory = false;
 let levelTransition = false, transitionTimer = 0;
 let levelComplete = false, levelCompleteTimer = 0;
@@ -1055,6 +1056,7 @@ function drawGameOverScreen() {
 // ── Spawn / fire ───────────────────────────────────────────────────────
 function startLevel() {
     levelKills = 0;
+    interceptorsLeft = 50 - cityIdx * 5;
     enemyMissiles = []; interceptors = []; explosions = [];
     initHouses();
     levelTransition = true;
@@ -1082,6 +1084,9 @@ function spawnEnemy() {
 }
 
 function fireInterceptor(tx, ty) {
+    if (interceptorsLeft <= 0) return;
+    interceptorsLeft--;
+    updateHUD();
     sfxLaunch();
     const sx = getLauncherX(), sy = GROUND_Y - 45;
     const dx = tx - sx, dy = ty - sy;
@@ -1102,7 +1107,7 @@ function boom(x, y, r) {
 // ── Update DOM ─────────────────────────────────────────────────────────
 function updateHUD() {
     document.getElementById('score').textContent = `ניקוד: ${score}`;
-    document.getElementById('level').textContent  = `${CITIES[cityIdx].name} (${cityIdx+1}/${CITIES.length})`;
+    document.getElementById('level').textContent  = `${CITIES[cityIdx].name} (${cityIdx+1}/${CITIES.length}) | 🚀${interceptorsLeft}`;
     const h = '❤️'.repeat(Math.max(0, houses.filter(h => h.alive).length))
             + '🖤'.repeat(Math.max(0, houses.filter(h => !h.alive).length));
     document.getElementById('lives').textContent = `בתים: ${h}`;
@@ -1234,7 +1239,7 @@ function handleInput(mx, my) {
     if (victory || gameOver) {
         victory = false; gameOver = false;
         score = 0; cityIdx = 0; frameCount = 0;
-        totalKills = 0; levelKills = 0; prevTier = 0; upgradeTimer = 0;
+        totalKills = 0; levelKills = 0; prevTier = 0; upgradeTimer = 0; interceptorsLeft = 50;
         enemyMissiles = []; interceptors = []; explosions = [];
         startLevel();
         startBgMusic();
