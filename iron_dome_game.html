@@ -72,6 +72,53 @@
             justify-content: center;
         }
         #muteBtn:hover { background: rgba(255,255,255,0.18); }
+        #lbBtn {
+            cursor: pointer;
+            font-size: 22px;
+            padding: 8px 12px;
+            min-width: 44px;
+            min-height: 44px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 6px;
+            border: 1px solid #1a4a7a;
+            user-select: none;
+            transition: background 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #lbBtn:hover { background: rgba(255,255,255,0.18); }
+        #lbModal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.82);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+        #lbModal.open { display: flex; }
+        #lbBox {
+            background: #0a0a2a;
+            border: 2px solid #1a4a7a;
+            border-radius: 12px;
+            padding: 24px 28px;
+            min-width: 320px;
+            max-width: 420px;
+            max-height: 80vh;
+            overflow-y: auto;
+            direction: rtl;
+        }
+        #lbBox h2 { color: #ffd700; text-align: center; margin-bottom: 16px; font-size: 22px; }
+        #lbBox table { width: 100%; border-collapse: collapse; font-size: 15px; }
+        #lbBox th { color: #4a9eff; padding: 4px 8px; border-bottom: 1px solid #1a4a7a; }
+        #lbBox td { color: #ddd; padding: 5px 8px; border-bottom: 1px solid rgba(26,74,122,0.4); }
+        #lbBox tr:first-child td { color: #ffd700; font-weight: bold; }
+        #lbClose {
+            display: block; margin: 16px auto 0;
+            padding: 8px 24px; background: #0038b8; color: #fff;
+            border: none; border-radius: 8px; cursor: pointer; font-size: 16px;
+        }
     </style>
 </head>
 <body>
@@ -80,10 +127,22 @@
         <div id="score">ניקוד: 0</div>
         <div id="level">שלב 1</div>
         <div id="lives">בתים: ❤️❤️❤️❤️❤️</div>
+        <div id="lbBtn" onclick="showLeaderboard()" title="לוח תוצאות">🏆</div>
         <div id="muteBtn" onclick="toggleMute()" title="השתק/הפעל מוזיקה">🔊</div>
     </div>
     <canvas id="gameCanvas" width="800" height="560"></canvas>
     <div id="instructions">לחץ על המסך כדי לירות טיל יירוט לעבר הטילים האיראניים</div>
+
+    <div id="lbModal">
+        <div id="lbBox">
+            <h2>🏆 לוח תוצאות 🏆</h2>
+            <table>
+                <thead><tr><th>#</th><th>ניקוד</th><th>עיר</th><th>תאריך</th></tr></thead>
+                <tbody id="lbBody"></tbody>
+            </table>
+            <button id="lbClose" onclick="hideLeaderboard()">סגור</button>
+        </div>
+    </div>
 
 <script>
 const canvas = document.getElementById('gameCanvas');
@@ -281,6 +340,38 @@ function sfxGameOver() {
         o.connect(g); g.connect(masterGain);
         o.start(s); o.stop(s + 0.5);
     });
+}
+
+// ── Leaderboard ────────────────────────────────────────────────────────
+const LB_KEY = 'ironDomeScores';
+
+function getScores() {
+    try { return JSON.parse(localStorage.getItem(LB_KEY)) || []; } catch { return []; }
+}
+
+function saveScore(score) {
+    const scores = getScores();
+    scores.push({ score, city: CITIES[cityIdx].name, date: new Date().toLocaleDateString('he-IL') });
+    scores.sort((a, b) => b.score - a.score);
+    scores.splice(10);
+    localStorage.setItem(LB_KEY, JSON.stringify(scores));
+}
+
+function showLeaderboard() {
+    const scores = getScores();
+    const tbody = document.getElementById('lbBody');
+    if (!scores.length) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#888">אין תוצאות עדיין</td></tr>';
+    } else {
+        tbody.innerHTML = scores.map((s, i) =>
+            `<tr><td>${i+1}</td><td>${s.score}</td><td>${s.city}</td><td>${s.date}</td></tr>`
+        ).join('');
+    }
+    document.getElementById('lbModal').classList.add('open');
+}
+
+function hideLeaderboard() {
+    document.getElementById('lbModal').classList.remove('open');
 }
 
 // ── Stars ──────────────────────────────────────────────────────────────
@@ -904,7 +995,7 @@ function update() {
         if (levelCompleteTimer >= 120) {
             levelComplete = false;
             cityIdx++;
-            if (cityIdx >= CITIES.length) { victory = true; return; }
+            if (cityIdx >= CITIES.length) { saveScore(score); victory = true; return; }
             startLevel();
         }
         return;
@@ -936,7 +1027,7 @@ function update() {
             sfxBoom(true);
             if (m.target.hp <= 0) m.target.alive = false;
             updateHUD();
-            if (!houses.some(h => h.alive)) { sfxGameOver(); gameOver = true; }
+            if (!houses.some(h => h.alive)) { sfxGameOver(); saveScore(score); gameOver = true; }
             return false;
         }
         if (m.y > H + 30) return false;
