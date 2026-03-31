@@ -113,6 +113,22 @@
             justify-content: center;
         }
         #lbBtn:hover { background: rgba(255,255,255,0.18); }
+        #fsBtn {
+            cursor: pointer;
+            font-size: 22px;
+            padding: 8px 12px;
+            min-width: 44px;
+            min-height: 44px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 6px;
+            border: 1px solid #1a4a7a;
+            user-select: none;
+            transition: background 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #fsBtn:hover { background: rgba(255,255,255,0.18); }
         #lbModal {
             display: none;
             position: fixed;
@@ -160,6 +176,7 @@
             <div id="level">שלב 1</div>
             <div id="lives">בתים: ❤️❤️❤️❤️❤️</div>
             <div id="lbBtn" onclick="showLeaderboard()" title="לוח תוצאות">🏆</div>
+            <div id="fsBtn" onclick="toggleFullscreen()" title="מסך מלא">⛶</div>
             <div id="muteBtn" onclick="toggleMute()" title="השתק/הפעל מוזיקה">🔊</div>
         </div>
         <canvas id="gameCanvas" width="800" height="560"></canvas>
@@ -272,6 +289,28 @@ const PERC = [0,-1,0,-1, 1,-1,0,-1, 0,-1,0,-1, 1,-1,1,-1];
 function initAudio() {
     _unlockAudio(); // ensure context exists and is running
 }
+
+function toggleFullscreen() {
+    const el = document.documentElement;
+    const isFS = document.fullscreenElement || document.webkitFullscreenElement;
+    if (!isFS) {
+        const req = el.requestFullscreen || el.webkitRequestFullscreen;
+        if (req) req.call(el).catch(() => {});
+    } else {
+        const exit = document.exitFullscreen || document.webkitExitFullscreen;
+        if (exit) exit.call(document);
+    }
+}
+document.addEventListener('fullscreenchange', () => {
+    const isFS = !!document.fullscreenElement;
+    document.getElementById('fsBtn').textContent = isFS ? '✕' : '⛶';
+    resizeCanvas();
+});
+document.addEventListener('webkitfullscreenchange', () => {
+    const isFS = !!document.webkitFullscreenElement;
+    document.getElementById('fsBtn').textContent = isFS ? '✕' : '⛶';
+    resizeCanvas();
+});
 
 function toggleMute() {
     muted = !muted;
