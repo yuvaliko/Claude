@@ -208,8 +208,8 @@
         <div id="instructions">לחץ על המסך כדי לירות טיל יירוט לעבר הטילים האיראניים</div>
     </div>
 
-    <button id="fsBtn" title="מסך מלא">⤢</button>
-    <button id="pauseBtn" title="השהה/המשך">⏸</button>
+    <button id="fsBtn" onclick="toggleFullscreen()" title="מסך מלא">⤢</button>
+    <button id="pauseBtn" onclick="togglePause()" title="השהה/המשך">⏸</button>
 
     <div id="lbModal">
         <div id="lbBox">
@@ -324,46 +324,7 @@ function toggleFullscreen() {
     fakeFS = !fakeFS;
     document.getElementById('fsBtn').textContent = fakeFS ? '✕' : '⤢';
     resizeCanvas();
-    // Attempt native fullscreen on top (hides browser chrome when supported)
-    try {
-        if (fakeFS) {
-            const req = document.documentElement.requestFullscreen ||
-                        document.documentElement.webkitRequestFullscreen;
-            if (req) req.call(document.documentElement).catch(() => {});
-        } else {
-            const exit = document.exitFullscreen || document.webkitExitFullscreen;
-            if (exit) exit.call(document).catch(() => {});
-        }
-    } catch(e) {}
 }
-// If user presses Escape to exit native fullscreen, sync fakeFS state
-document.addEventListener('fullscreenchange', () => {
-    if (!document.fullscreenElement && fakeFS) {
-        fakeFS = false;
-        document.getElementById('fsBtn').textContent = '⤢';
-        resizeCanvas();
-    }
-});
-document.addEventListener('webkitfullscreenchange', () => {
-    if (!document.webkitFullscreenElement && fakeFS) {
-        fakeFS = false;
-        document.getElementById('fsBtn').textContent = '⤢';
-        resizeCanvas();
-    }
-});
-// Wire up fullscreen button (click + touch)
-(function() {
-    const btn = document.getElementById('fsBtn');
-    btn.addEventListener('click', function(e) {
-        e.stopPropagation();
-        toggleFullscreen();
-    });
-    btn.addEventListener('touchstart', function(e) {
-        e.stopPropagation();
-        e.preventDefault();
-        toggleFullscreen();
-    }, { passive: false });
-})();
 
 function togglePause() {
     if (!gameStarted || gameOver || victory || levelTransition) return;
@@ -1429,11 +1390,14 @@ function resizeCanvas() {
         canvas.height = H;
         canvas.style.width  = W + 'px';
         canvas.style.height = H + 'px';
-        // Pin wrapper to top-left so canvas truly covers viewport
+        // Pin wrapper to cover full viewport
         wrapper.style.position = 'fixed';
-        wrapper.style.inset    = '0';
-        wrapper.style.width    = '100%';
-        wrapper.style.height   = '100%';
+        wrapper.style.top      = '0';
+        wrapper.style.left     = '0';
+        wrapper.style.right    = '0';
+        wrapper.style.bottom   = '0';
+        wrapper.style.width    = '100vw';
+        wrapper.style.height   = '100vh';
         wrapper.style.zIndex   = '10';
         ui.style.position = 'fixed';
         ui.style.top = '0';
@@ -1450,7 +1414,10 @@ function resizeCanvas() {
         canvas.style.width  = W + 'px';
         canvas.style.height = H + 'px';
         wrapper.style.position = '';
-        wrapper.style.inset    = '';
+        wrapper.style.top      = '';
+        wrapper.style.left     = '';
+        wrapper.style.right    = '';
+        wrapper.style.bottom   = '';
         wrapper.style.width    = '';
         wrapper.style.height   = '';
         wrapper.style.zIndex   = '';
