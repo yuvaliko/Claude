@@ -199,6 +199,7 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 let W = 800, H = 560, GROUND_Y = 505;
+let fakeFS = false;
 
 // ── Cities ─────────────────────────────────────────────────────────────
 const CITIES = [
@@ -291,27 +292,52 @@ function initAudio() {
     _unlockAudio(); // ensure context exists and is running
 }
 
+function enterFakeFS() {
+    fakeFS = true;
+    document.getElementById('fsBtn').textContent = '✕';
+    resizeCanvas();
+}
+function exitFakeFS() {
+    fakeFS = false;
+    document.getElementById('fsBtn').textContent = '⤢';
+    resizeCanvas();
+}
 function toggleFullscreen() {
-    const el = document.documentElement;
-    const isFS = document.fullscreenElement || document.webkitFullscreenElement;
-    if (!isFS) {
+    const isNativeFS = document.fullscreenElement || document.webkitFullscreenElement;
+    if (!isNativeFS && !fakeFS) {
+        const el  = document.documentElement;
         const req = el.requestFullscreen || el.webkitRequestFullscreen;
-        if (req) req.call(el).catch(() => {});
-    } else {
+        if (req) {
+            const p = req.call(el);
+            if (p && p.catch) p.catch(() => enterFakeFS());
+        } else {
+            enterFakeFS(); // iOS Safari: no native fullscreen API
+        }
+    } else if (isNativeFS) {
         const exit = document.exitFullscreen || document.webkitExitFullscreen;
         if (exit) exit.call(document);
+    } else {
+        exitFakeFS();
     }
 }
+// Handle native fullscreen changes
 document.addEventListener('fullscreenchange', () => {
-    const isFS = !!document.fullscreenElement;
-    document.getElementById('fsBtn').textContent = isFS ? '✕' : '⤢';
-    resizeCanvas();
+    if (!document.fullscreenElement) {
+        document.getElementById('fsBtn').textContent = '⤢';
+        resizeCanvas();
+    }
 });
 document.addEventListener('webkitfullscreenchange', () => {
-    const isFS = !!document.webkitFullscreenElement;
-    document.getElementById('fsBtn').textContent = isFS ? '✕' : '⤢';
-    resizeCanvas();
+    if (!document.webkitFullscreenElement) {
+        document.getElementById('fsBtn').textContent = '⤢';
+        resizeCanvas();
+    }
 });
+// Direct touch handler so iOS responds without click-delay
+document.getElementById('fsBtn').addEventListener('touchstart', function(e) {
+    e.stopPropagation();
+    toggleFullscreen();
+}, { passive: true });
 
 function toggleMute() {
     muted = !muted;
@@ -1334,7 +1360,8 @@ canvas.addEventListener('touchmove', e => {
 
 // ── Resize canvas to fill screen on mobile landscape ───────────────────
 function resizeCanvas() {
-    const isMobileLandscape = window.innerWidth > window.innerHeight && window.innerHeight < 600;
+    const isMobileLandscape = fakeFS ||
+        (window.innerWidth > window.innerHeight && window.innerHeight < 600);
     const title = document.getElementById('title');
     const instr = document.getElementById('instructions');
     const ui    = document.getElementById('ui');
