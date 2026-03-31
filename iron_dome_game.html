@@ -134,6 +134,27 @@
             user-select: none;
         }
         #fsBtn:hover, #fsBtn:active { background: rgba(74,158,255,0.3); }
+        #pauseBtn {
+            position: fixed;
+            top: 8px;
+            left: 60px;
+            z-index: 9998;
+            cursor: pointer;
+            font-size: 22px;
+            width: 44px;
+            height: 44px;
+            background: rgba(0,0,20,0.75);
+            border-radius: 8px;
+            border: 2px solid #4a9eff;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-tap-highlight-color: rgba(74,158,255,0.4);
+            touch-action: manipulation;
+            user-select: none;
+        }
+        #pauseBtn:hover, #pauseBtn:active { background: rgba(74,158,255,0.3); }
         #lbModal {
             display: none;
             position: fixed;
@@ -188,6 +209,7 @@
     </div>
 
     <button id="fsBtn" title="מסך מלא">⤢</button>
+    <button id="pauseBtn" title="השהה/המשך">⏸</button>
 
     <div id="lbModal">
         <div id="lbBox">
@@ -222,6 +244,7 @@ let cityIdx = 0;
 let prevTier = 0, upgradeTimer = 0;
 let interceptorsLeft = 50;
 let gameStarted = false, gameOver = false, victory = false;
+let paused = false;
 let levelTransition = false, transitionTimer = 0;
 let levelComplete = false, levelCompleteTimer = 0;
 let fireworks = [];
@@ -339,6 +362,21 @@ document.addEventListener('webkitfullscreenchange', () => {
         e.stopPropagation();
         e.preventDefault();
         toggleFullscreen();
+    }, { passive: false });
+})();
+
+function togglePause() {
+    if (!gameStarted || gameOver || victory || levelTransition) return;
+    paused = !paused;
+    document.getElementById('pauseBtn').textContent = paused ? '▶' : '⏸';
+    if (paused && masterGain) masterGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
+    else if (!paused && masterGain && !muted) masterGain.gain.linearRampToValueAtTime(0.5, audioCtx.currentTime + 0.1);
+}
+(function() {
+    const btn = document.getElementById('pauseBtn');
+    btn.addEventListener('click', function(e) { e.stopPropagation(); togglePause(); });
+    btn.addEventListener('touchstart', function(e) {
+        e.stopPropagation(); e.preventDefault(); togglePause();
     }, { passive: false });
 })();
 
@@ -1211,7 +1249,7 @@ function updateHUD() {
 
 // ── Main update loop ───────────────────────────────────────────────────
 function update() {
-    if (!gameStarted || gameOver || victory) return;
+    if (!gameStarted || gameOver || victory || paused) return;
 
     if (levelTransition) {
         transitionTimer++;
@@ -1307,6 +1345,18 @@ function draw() {
     else if (gameOver)           drawGameOverScreen();
     else if (levelTransition)    drawTransition();
     else if (levelComplete)      drawLevelComplete();
+    if (paused && gameStarted && !gameOver && !victory) {
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `bold ${Math.round(H * 0.09)}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.fillText('⏸ מושהה', W / 2, H / 2 - H * 0.04);
+        ctx.font = `${Math.round(H * 0.045)}px Arial`;
+        ctx.fillStyle = '#aad4ff';
+        ctx.fillText('לחץ ▶ להמשך', W / 2, H / 2 + H * 0.06);
+        ctx.textAlign = 'start';
+    }
 }
 
 function loop() { update(); draw(); requestAnimationFrame(loop); }
