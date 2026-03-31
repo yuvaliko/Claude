@@ -74,8 +74,6 @@
             cursor: crosshair;
             box-shadow: 0 0 40px rgba(74, 158, 255, 0.3);
             display: block;
-            width: 800px;
-            height: 560px;
             touch-action: none;
         }
         #instructions {
@@ -182,7 +180,7 @@
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const W = canvas.width, H = canvas.height;
+let W = 800, H = 560, GROUND_Y = 505;
 
 // ── Cities ─────────────────────────────────────────────────────────────
 const CITIES = [
@@ -206,7 +204,6 @@ let fireworks = [];
 let enemyMissiles = [], interceptors = [], explosions = [], stars = [];
 let houses = [];
 const HOUSE_COUNT = 5;
-const GROUND_Y = H - 55;
 
 // ── Audio System ───────────────────────────────────────────────────────
 let audioCtx = null, masterGain = null, muted = false;
@@ -449,15 +446,19 @@ function hideLeaderboard() {
 }
 
 // ── Stars ──────────────────────────────────────────────────────────────
-for (let i = 0; i < 120; i++) {
-    stars.push({
-        x: Math.random() * W,
-        y: Math.random() * (GROUND_Y * 0.85),
-        r: Math.random() * 1.5 + 0.3,
-        phase: Math.random() * Math.PI * 2,
-        speed: Math.random() * 0.03 + 0.01
-    });
+function initStars() {
+    stars = [];
+    for (let i = 0; i < 120; i++) {
+        stars.push({
+            x: Math.random() * W,
+            y: Math.random() * (GROUND_Y * 0.85),
+            r: Math.random() * 1.5 + 0.3,
+            phase: Math.random() * Math.PI * 2,
+            speed: Math.random() * 0.03 + 0.01
+        });
+    }
 }
+initStars();
 
 // ── Init houses ────────────────────────────────────────────────────────
 function initHouses() {
@@ -629,7 +630,7 @@ function drawFlame(cx, cy) {
 }
 
 function getLauncherX() {
-    return CITIES[cityIdx].launcherX;
+    return Math.round(CITIES[cityIdx].launcherX * W / 800);
 }
 
 function drawIronDomeLauncher() {
@@ -1291,31 +1292,49 @@ canvas.addEventListener('touchmove', e => {
     e.preventDefault();
 }, { passive: false });
 
-// ── Scale game to fit landscape screen ────────────────────────────────
-function scaleGame() {
-    const wrapper  = document.getElementById('gameWrapper');
-    const title    = document.getElementById('title');
-    const instr    = document.getElementById('instructions');
+// ── Resize canvas to fill screen on mobile landscape ───────────────────
+function resizeCanvas() {
     const isMobileLandscape = window.innerWidth > window.innerHeight && window.innerHeight < 600;
+    const title = document.getElementById('title');
+    const instr = document.getElementById('instructions');
+    const ui    = document.getElementById('ui');
 
     if (isMobileLandscape) {
-        // Hide non-essential elements to maximise canvas space
         title.style.display = 'none';
         instr.style.display = 'none';
-        // Scale to fill width; canvas(560) + ui(50) + padding ≈ 625
-        const scale = Math.min(window.innerWidth / 820, window.innerHeight / 625);
-        wrapper.style.transformOrigin = 'top center';
-        wrapper.style.transform = `scale(${scale})`;
+        // Canvas fills full viewport; HUD overlays at top
+        W = window.innerWidth;
+        H = window.innerHeight;
+        canvas.width  = W;
+        canvas.height = H;
+        canvas.style.width  = W + 'px';
+        canvas.style.height = H + 'px';
+        ui.style.position = 'fixed';
+        ui.style.top = '0';
+        ui.style.left = '0';
+        ui.style.width = '100%';
+        ui.style.zIndex = '20';
+        ui.style.borderRadius = '0';
     } else {
         title.style.display = '';
         instr.style.display = '';
-        const scale = Math.min(window.innerWidth / 820, window.innerHeight / 680, 1);
-        wrapper.style.transformOrigin = 'top center';
-        wrapper.style.transform = scale < 1 ? `scale(${scale})` : '';
+        W = 800; H = 560;
+        canvas.width  = W;
+        canvas.height = H;
+        canvas.style.width  = W + 'px';
+        canvas.style.height = H + 'px';
+        ui.style.position = '';
+        ui.style.top = '';
+        ui.style.width = '';
+        ui.style.zIndex = '';
+        ui.style.borderRadius = '';
     }
+    GROUND_Y = H - Math.round(H * 0.098);
+    initStars();
+    if (gameStarted && !levelTransition) initHouses();
 }
-scaleGame();
-window.addEventListener('resize', scaleGame);
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
 
 // ── Go! ────────────────────────────────────────────────────────────────
 initHouses();
