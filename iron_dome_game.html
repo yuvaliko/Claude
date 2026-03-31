@@ -114,22 +114,26 @@
         }
         #lbBtn:hover { background: rgba(255,255,255,0.18); }
         #fsBtn {
+            position: fixed;
+            top: 8px;
+            left: 8px;
+            z-index: 9998;
             cursor: pointer;
-            font-size: 20px;
-            padding: 8px 12px;
-            min-width: 44px;
-            min-height: 44px;
-            background: rgba(255,255,255,0.08);
-            border-radius: 6px;
-            border: 1px solid #1a4a7a;
-            color: #e0e0e0;
-            user-select: none;
-            transition: background 0.15s;
+            font-size: 22px;
+            width: 44px;
+            height: 44px;
+            background: rgba(0,0,20,0.75);
+            border-radius: 8px;
+            border: 2px solid #4a9eff;
+            color: #ffffff;
             display: flex;
             align-items: center;
             justify-content: center;
+            -webkit-tap-highlight-color: rgba(74,158,255,0.4);
+            touch-action: manipulation;
+            user-select: none;
         }
-        #fsBtn:hover { background: rgba(255,255,255,0.18); }
+        #fsBtn:hover, #fsBtn:active { background: rgba(74,158,255,0.3); }
         #lbModal {
             display: none;
             position: fixed;
@@ -177,12 +181,13 @@
             <div id="level">שלב 1</div>
             <div id="lives">בתים: ❤️❤️❤️❤️❤️</div>
             <div id="lbBtn" onclick="showLeaderboard()" title="לוח תוצאות">🏆</div>
-            <div id="fsBtn" onclick="toggleFullscreen()" title="מסך מלא">⤢</div>
             <div id="muteBtn" onclick="toggleMute()" title="השתק/הפעל מוזיקה">🔊</div>
         </div>
         <canvas id="gameCanvas" width="800" height="560"></canvas>
         <div id="instructions">לחץ על המסך כדי לירות טיל יירוט לעבר הטילים האיראניים</div>
     </div>
+
+    <button id="fsBtn" title="מסך מלא">⤢</button>
 
     <div id="lbModal">
         <div id="lbBox">
@@ -333,11 +338,19 @@ document.addEventListener('webkitfullscreenchange', () => {
         resizeCanvas();
     }
 });
-// Direct touch handler so iOS responds without click-delay
-document.getElementById('fsBtn').addEventListener('touchstart', function(e) {
-    e.stopPropagation();
-    toggleFullscreen();
-}, { passive: true });
+// Wire up fullscreen button (click + touch)
+(function() {
+    const btn = document.getElementById('fsBtn');
+    btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        toggleFullscreen();
+    });
+    btn.addEventListener('touchstart', function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        toggleFullscreen();
+    }, { passive: false });
+})();
 
 function toggleMute() {
     muted = !muted;
