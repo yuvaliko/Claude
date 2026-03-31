@@ -297,43 +297,33 @@ function initAudio() {
     _unlockAudio(); // ensure context exists and is running
 }
 
-function enterFakeFS() {
-    fakeFS = true;
-    document.getElementById('fsBtn').textContent = '✕';
-    resizeCanvas();
-}
-function exitFakeFS() {
-    fakeFS = false;
-    document.getElementById('fsBtn').textContent = '⤢';
-    resizeCanvas();
-}
 function toggleFullscreen() {
-    const isNativeFS = document.fullscreenElement || document.webkitFullscreenElement;
-    if (!isNativeFS && !fakeFS) {
-        const el  = document.documentElement;
-        const req = el.requestFullscreen || el.webkitRequestFullscreen;
-        if (req) {
-            const p = req.call(el);
-            if (p && p.catch) p.catch(() => enterFakeFS());
+    fakeFS = !fakeFS;
+    document.getElementById('fsBtn').textContent = fakeFS ? '✕' : '⤢';
+    resizeCanvas();
+    // Attempt native fullscreen on top (hides browser chrome when supported)
+    try {
+        if (fakeFS) {
+            const req = document.documentElement.requestFullscreen ||
+                        document.documentElement.webkitRequestFullscreen;
+            if (req) req.call(document.documentElement).catch(() => {});
         } else {
-            enterFakeFS(); // iOS Safari: no native fullscreen API
+            const exit = document.exitFullscreen || document.webkitExitFullscreen;
+            if (exit) exit.call(document).catch(() => {});
         }
-    } else if (isNativeFS) {
-        const exit = document.exitFullscreen || document.webkitExitFullscreen;
-        if (exit) exit.call(document);
-    } else {
-        exitFakeFS();
-    }
+    } catch(e) {}
 }
-// Handle native fullscreen changes
+// If user presses Escape to exit native fullscreen, sync fakeFS state
 document.addEventListener('fullscreenchange', () => {
-    if (!document.fullscreenElement) {
+    if (!document.fullscreenElement && fakeFS) {
+        fakeFS = false;
         document.getElementById('fsBtn').textContent = '⤢';
         resizeCanvas();
     }
 });
 document.addEventListener('webkitfullscreenchange', () => {
-    if (!document.webkitFullscreenElement) {
+    if (!document.webkitFullscreenElement && fakeFS) {
+        fakeFS = false;
         document.getElementById('fsBtn').textContent = '⤢';
         resizeCanvas();
     }
@@ -1375,20 +1365,26 @@ canvas.addEventListener('touchmove', e => {
 function resizeCanvas() {
     const isMobileLandscape = fakeFS ||
         (window.innerWidth > window.innerHeight && window.innerHeight < 600);
-    const title = document.getElementById('title');
-    const instr = document.getElementById('instructions');
-    const ui    = document.getElementById('ui');
+    const title   = document.getElementById('title');
+    const instr   = document.getElementById('instructions');
+    const ui      = document.getElementById('ui');
+    const wrapper = document.getElementById('gameWrapper');
 
     if (isMobileLandscape) {
         title.style.display = 'none';
         instr.style.display = 'none';
-        // Canvas fills full viewport; HUD overlays at top
         W = window.innerWidth;
         H = window.innerHeight;
         canvas.width  = W;
         canvas.height = H;
         canvas.style.width  = W + 'px';
         canvas.style.height = H + 'px';
+        // Pin wrapper to top-left so canvas truly covers viewport
+        wrapper.style.position = 'fixed';
+        wrapper.style.inset    = '0';
+        wrapper.style.width    = '100%';
+        wrapper.style.height   = '100%';
+        wrapper.style.zIndex   = '10';
         ui.style.position = 'fixed';
         ui.style.top = '0';
         ui.style.left = '0';
@@ -1403,6 +1399,11 @@ function resizeCanvas() {
         canvas.height = H;
         canvas.style.width  = W + 'px';
         canvas.style.height = H + 'px';
+        wrapper.style.position = '';
+        wrapper.style.inset    = '';
+        wrapper.style.width    = '';
+        wrapper.style.height   = '';
+        wrapper.style.zIndex   = '';
         ui.style.position = '';
         ui.style.top = '';
         ui.style.width = '';
