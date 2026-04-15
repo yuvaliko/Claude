@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>גרף רווחים: Claude vs ChatGPT</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0d1117;
+      color: #e6edf3;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 16px;
+    }
+
+    h1 {
+      font-size: 1.9rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+      background: linear-gradient(135deg, #7c3aed, #2563eb, #06b6d4);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-align: center;
+    }
+
+    .subtitle {
+      color: #8b949e;
+      font-size: 0.9rem;
+      margin-bottom: 28px;
+      text-align: center;
+    }
+
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 16px;
+      padding: 28px;
+      width: 100%;
+      max-width: 900px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 24px;
+      justify-content: center;
+    }
+
+    .btn {
+      padding: 8px 20px;
+      border-radius: 9999px;
+      border: 1.5px solid #30363d;
+      background: transparent;
+      color: #8b949e;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn:hover { border-color: #58a6ff; color: #58a6ff; }
+    .btn.active {
+      background: #1f4080;
+      border-color: #2563eb;
+      color: #fff;
+    }
+    .btn.claude-active {
+      background: #3b1f7a;
+      border-color: #7c3aed;
+      color: #fff;
+    }
+
+    .chart-wrap {
+      position: relative;
+      height: 380px;
+    }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 14px;
+      margin-top: 28px;
+    }
+
+    .stat-card {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+    .stat-card .label {
+      font-size: 0.75rem;
+      color: #8b949e;
+      margin-bottom: 6px;
+    }
+    .stat-card .value {
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+    .stat-card .sub {
+      font-size: 0.75rem;
+      margin-top: 4px;
+    }
+
+    .claude-color { color: #a78bfa; }
+    .gpt-color   { color: #38bdf8; }
+    .grow-color  { color: #34d399; }
+
+    .legend {
+      display: flex;
+      justify-content: center;
+      gap: 28px;
+      margin-bottom: 20px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: #c9d1d9;
+    }
+    .dot {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+    }
+
+    .note {
+      font-size: 0.72rem;
+      color: #484f58;
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .toggle-group {
+      display: flex;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 9999px;
+      padding: 3px;
+      gap: 2px;
+    }
+    .toggle-btn {
+      padding: 6px 18px;
+      border-radius: 9999px;
+      border: none;
+      background: transparent;
+      color: #8b949e;
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .toggle-btn.active {
+      background: #21262d;
+      color: #e6edf3;
+    }
+
+    @media (max-width: 600px) {
+      .stats-row { grid-template-columns: 1fr 1fr; }
+      h1 { font-size: 1.3rem; }
+    }
+  </style>
+</head>
+<body>
+
+<h1>Claude vs ChatGPT — גרף רווחים שנתי</h1>
+<p class="subtitle">השוואת הכנסות חודשיות | אפריל 2025 – מרץ 2026 (הערכות)</p>
+
+<div class="card">
+
+  <div class="controls">
+    <div class="toggle-group">
+      <button class="toggle-btn active" id="btn-revenue" onclick="switchMetric('revenue')">הכנסות ($B)</button>
+      <button class="toggle-btn" id="btn-growth" onclick="switchMetric('growth')">צמיחה (%)</button>
+      <button class="toggle-btn" id="btn-share" onclick="switchMetric('share')">נתח שוק (%)</button>
+    </div>
+    <div class="toggle-group">
+      <button class="toggle-btn active" id="btn-line" onclick="switchType('line')">קו</button>
+      <button class="toggle-btn" id="btn-bar" onclick="switchType('bar')">עמודות</button>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item">
+      <div class="dot" style="background:#a78bfa"></div>
+      Claude (Anthropic)
+    </div>
+    <div class="legend-item">
+      <div class="dot" style="background:#38bdf8"></div>
+      ChatGPT (OpenAI)
+    </div>
+  </div>
+
+  <div class="chart-wrap">
+    <canvas id="myChart"></canvas>
+  </div>
+
+  <div class="stats-row" id="statsRow"></div>
+
+  <p class="note">
+    * הנתונים מבוססים על דיווחים ציבוריים, ניתוחי אנליסטים והערכות שוק. אינם מייצגים דוחות כספיים רשמיים.
+  </p>
+</div>
+
+<script>
+  const months = ['אפר׳ 25','מאי 25','יוני 25','יולי 25','אוג׳ 25','ספט׳ 25','אוק׳ 25','נוב׳ 25','דצמ׳ 25','ינו׳ 26','פבר׳ 26','מרץ 26'];
+
+  // Monthly revenue in $B
+  const claudeRevenue = [0.095, 0.118, 0.148, 0.182, 0.220, 0.265, 0.315, 0.370, 0.430, 0.495, 0.565, 0.640];
+  const gptRevenue    = [0.375, 0.420, 0.470, 0.520, 0.580, 0.645, 0.710, 0.790, 0.875, 0.960, 1.050, 1.130];
+
+  // MoM growth %
+  function calcGrowth(arr) {
+    return arr.map((v, i) => i === 0 ? null : +((v - arr[i-1]) / arr[i-1] * 100).toFixed(1));
+  }
+  const claudeGrowth = calcGrowth(claudeRevenue);
+  const gptGrowth    = calcGrowth(gptRevenue);
+
+  // Market share %
+  const claudeShare = claudeRevenue.map((c, i) => +((c / (c + gptRevenue[i])) * 100).toFixed(1));
+  const gptShare    = gptRevenue.map((g, i) => +((g / (claudeRevenue[i] + g)) * 100).toFixed(1));
+
+  const datasets = {
+    revenue: {
+      claude: claudeRevenue,
+      gpt: gptRevenue,
+      label: 'הכנסות חודשיות ($B)',
+      prefix: '$', suffix: 'B',
+    },
+    growth: {
+      claude: claudeGrowth,
+      gpt: gptGrowth,
+      label: 'צמיחה חודשית (%)',
+      prefix: '', suffix: '%',
+    },
+    share: {
+      claude: claudeShare,
+      gpt: gptShare,
+      label: 'נתח שוק (%)',
+      prefix: '', suffix: '%',
+    }
+  };
+
+  let currentMetric = 'revenue';
+  let currentType   = 'line';
+
+  const ctx = document.getElementById('myChart').getContext('2d');
+
+  function makeGradient(color1, color2) {
+    const grad = ctx.createLinearGradient(0, 0, 0, 380);
+    grad.addColorStop(0, color1);
+    grad.addColorStop(1, color2);
+    return grad;
+  }
+
+  const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: months,
+      datasets: [
+        {
+          label: 'Claude (Anthropic)',
+          data: claudeRevenue,
+          borderColor: '#a78bfa',
+          backgroundColor: makeGradient('rgba(167,139,250,0.35)', 'rgba(167,139,250,0.02)'),
+          fill: true,
+          tension: 0.45,
+          pointRadius: 5,
+          pointHoverRadius: 8,
+          pointBackgroundColor: '#a78bfa',
+          borderWidth: 3,
+        },
+        {
+          label: 'ChatGPT (OpenAI)',
+          data: gptRevenue,
+          borderColor: '#38bdf8',
+          backgroundColor: makeGradient('rgba(56,189,248,0.25)', 'rgba(56,189,248,0.02)'),
+          fill: true,
+          tension: 0.45,
+          pointRadius: 5,
+          pointHoverRadius: 8,
+          pointBackgroundColor: '#38bdf8',
+          borderWidth: 3,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 700, easing: 'easeInOutQuart' },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1c2128',
+          borderColor: '#30363d',
+          borderWidth: 1,
+          titleColor: '#e6edf3',
+          bodyColor: '#8b949e',
+          padding: 12,
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              if (v === null) return null;
+              const d = datasets[currentMetric];
+              return ` ${ctx.dataset.label}: ${d.prefix}${v}${d.suffix}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: '#21262d' },
+          ticks: { color: '#8b949e', font: { size: 11 } }
+        },
+        y: {
+          grid: { color: '#21262d' },
+          ticks: {
+            color: '#8b949e',
+            font: { size: 11 },
+            callback: v => {
+              const d = datasets[currentMetric];
+              return `${d.prefix}${v}${d.suffix}`;
+            }
+          }
+        }
+      }
+    }
+  });
+
+  function switchMetric(m) {
+    currentMetric = m;
+    const d = datasets[m];
+    chart.data.datasets[0].data = d.claude;
+    chart.data.datasets[1].data = d.gpt;
+    chart.options.scales.y.title = { display: true, text: d.label, color: '#8b949e' };
+    chart.update('active');
+    updateStats();
+    document.querySelectorAll('.toggle-btn[id^=btn-r], .toggle-btn[id^=btn-g], .toggle-btn[id^=btn-s]').forEach(b => b.classList.remove('active'));
+    document.getElementById('btn-' + (m === 'revenue' ? 'revenue' : m === 'growth' ? 'growth' : 'share')).classList.add('active');
+  }
+
+  function switchType(t) {
+    currentType = t;
+    chart.config.type = t;
+    if (t === 'bar') {
+      chart.data.datasets[0].fill = false;
+      chart.data.datasets[1].fill = false;
+      chart.data.datasets[0].backgroundColor = 'rgba(167,139,250,0.75)';
+      chart.data.datasets[1].backgroundColor = 'rgba(56,189,248,0.75)';
+      chart.data.datasets[0].tension = 0;
+      chart.data.datasets[1].tension = 0;
+    } else {
+      chart.data.datasets[0].fill = true;
+      chart.data.datasets[1].fill = true;
+      chart.data.datasets[0].backgroundColor = makeGradient('rgba(167,139,250,0.35)', 'rgba(167,139,250,0.02)');
+      chart.data.datasets[1].backgroundColor = makeGradient('rgba(56,189,248,0.25)', 'rgba(56,189,248,0.02)');
+      chart.data.datasets[0].tension = 0.45;
+      chart.data.datasets[1].tension = 0.45;
+    }
+    chart.update('active');
+    document.querySelectorAll('.toggle-btn[id^=btn-l], .toggle-btn[id^=btn-b]').forEach(b => b.classList.remove('active'));
+    document.getElementById('btn-' + t).classList.add('active');
+  }
+
+  function updateStats() {
+    const d = datasets[currentMetric];
+    const cl = d.claude.filter(v => v !== null);
+    const gp = d.gpt.filter(v => v !== null);
+    const clLast = cl[cl.length - 1];
+    const gpLast = gp[gp.length - 1];
+    const clFirst = d.claude[0];
+    const gpFirst = d.gpt[0];
+    const clGrowthTotal = clFirst ? +((clLast - clFirst) / clFirst * 100).toFixed(0) : 0;
+    const gpGrowthTotal = gpFirst ? +((gpLast - gpFirst) / gpFirst * 100).toFixed(0) : 0;
+
+    const p = d.prefix, s = d.suffix;
+
+    document.getElementById('statsRow').innerHTML = `
+      <div class="stat-card">
+        <div class="label">Claude — ערך אחרון</div>
+        <div class="value claude-color">${p}${clLast}${s}</div>
+        <div class="sub claude-color">+${clGrowthTotal}% מתחילת התקופה</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">ChatGPT — ערך אחרון</div>
+        <div class="value gpt-color">${p}${gpLast}${s}</div>
+        <div class="sub gpt-color">+${gpGrowthTotal}% מתחילת התקופה</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">יחס Claude / ChatGPT</div>
+        <div class="value grow-color">${(clLast / gpLast * 100).toFixed(0)}%</div>
+        <div class="sub grow-color">Claude הגיע ל-${(clLast / gpLast * 100).toFixed(0)}% מ-OpenAI</div>
+      </div>
+    `;
+  }
+
+  updateStats();
+</script>
+</body>
+</html>
